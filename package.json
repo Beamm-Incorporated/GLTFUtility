@@ -1,11 +1,12 @@
 {
     "name": "com.siccity.gltfutility",
     "displayName": "GLTFUtility",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "unity": "2018.2",
     "keywords": ["glTF", "import"],
 	"description": "Lightweight glTF loader.",
 	"dependencies": {
-		"com.unity.nuget.newtonsoft-json": "2.0.0-preview"
+        "com.unity.nuget.newtonsoft-json": "2.0.0-preview",
+        "com.atteneder.ktx":"https://github.com/atteneder/KtxUnity.git"
 	}
 }
