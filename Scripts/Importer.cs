@@ -203,7 +203,7 @@ namespace Siccity.GLTFUtility {
 			textureTask.RunSynchronously();
 			GLTFMaterial.ImportTask materialTask = new GLTFMaterial.ImportTask(gltfObject.materials, textureTask, importSettings);
 			materialTask.RunSynchronously();
-			GLTFMesh.ImportTask meshTask = new GLTFMesh.ImportTask(gltfObject.meshes, accessorTask, materialTask, importSettings);
+			GLTFMesh.ImportTask meshTask = new GLTFMesh.ImportTask(gltfObject.meshes, accessorTask, materialTask, bufferViewTask, importSettings);
 			meshTask.RunSynchronously();
 			GLTFSkin.ImportTask skinTask = new GLTFSkin.ImportTask(gltfObject.skins, accessorTask);
 			skinTask.RunSynchronously();
@@ -250,7 +250,7 @@ namespace Siccity.GLTFUtility {
 			importTasks.Add(textureTask);
 			GLTFMaterial.ImportTask materialTask = new GLTFMaterial.ImportTask(gltfObject.materials, textureTask, importSettings);
 			importTasks.Add(materialTask);
-			GLTFMesh.ImportTask meshTask = new GLTFMesh.ImportTask(gltfObject.meshes, accessorTask, materialTask, importSettings);
+			GLTFMesh.ImportTask meshTask = new GLTFMesh.ImportTask(gltfObject.meshes, accessorTask, materialTask, bufferViewTask, importSettings);
 			importTasks.Add(meshTask);
 			GLTFSkin.ImportTask skinTask = new GLTFSkin.ImportTask(gltfObject.skins, accessorTask);
 			importTasks.Add(skinTask);
@@ -299,6 +299,10 @@ namespace Siccity.GLTFUtility {
 					switch (gLTFObject.extensionsRequired[i]) {
 						case "KHR_materials_pbrSpecularGlossiness":
 							break;
+						# if DRACO
+						case "KHR_draco_mesh_compression":
+							break;
+						# endif
 						default:
 							Debug.LogWarning($"GLTFUtility: Required extension '{gLTFObject.extensionsRequired[i]}' not supported. Import process will proceed but results may vary.");
 							break;

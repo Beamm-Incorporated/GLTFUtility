@@ -75,7 +75,7 @@ namespace Siccity.GLTFUtility {
 						uwr.Dispose();
 					}
 				} else {
-					if(mimeType=="image/png"||mimeType=="image/jpg") {
+					if(mimeType=="image/png"||mimeType=="image/jpg"||mimeType=="image/jpeg") {
 						Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, true, linear);
 						if (!tex.LoadImage(bytes)) {
 							yield break;

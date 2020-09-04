@@ -1,7 +1,8 @@
 {
     "name": "Siccity.GLTFUtility",
     "references": [
-        "GUID:3d354272d3f2f4c3387dbccbaebd0f60"
+        "GUID:3d354272d3f2f4c3387dbccbaebd0f60",
+        "GUID:1f1db07d22489445ab0fc8ed6ef2ed4f"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

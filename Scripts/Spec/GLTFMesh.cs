@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using KtxUnity;
 using Newtonsoft.Json;
+using Unity.Collections;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Scripting;
 
 namespace Siccity.GLTFUtility {
@@ -35,6 +39,7 @@ namespace Siccity.GLTFUtility {
 		public class ImportTask : Importer.ImportTask<ImportResult[]> {
 			private class MeshData {
 				string name;
+				public GLTFBufferView.ImportResult dracoBufferView;
 				List<Vector3> normals = new List<Vector3>();
 				List<List<int>> submeshTris = new List<List<int>>();
 				List<RenderingMode> submeshTrisMode = new List<RenderingMode>();
@@ -58,13 +63,18 @@ namespace Siccity.GLTFUtility {
 					public Vector3[] pos, norm, tan;
 				}
 
-				public MeshData(GLTFMesh gltfMesh, GLTFAccessor.ImportResult[] accessors) {
+				public MeshData(GLTFMesh gltfMesh, GLTFAccessor.ImportResult[] accessors, GLTFBufferView.ImportResult[] bufferViews) {
 					name = gltfMesh.name;
 					if (gltfMesh.primitives.Count == 0) {
 						Debug.LogWarning("0 primitives in mesh");
 					} else {
 						for (int i = 0; i < gltfMesh.primitives.Count; i++) {
 							GLTFPrimitive primitive = gltfMesh.primitives[i];
+							
+							if(primitive.extensions!=null&&primitive.extensions.KHR_draco_mesh_compression!=null) {
+								dracoBufferView = bufferViews[primitive.extensions.KHR_draco_mesh_compression.bufferView];
+								continue; // --- skip import if draco extension is active, we'll do this in the coroutine
+							}
 
 							int vertStartIndex = verts.Count;
 							submeshVertexStart.Add(vertStartIndex);
@@ -269,7 +279,7 @@ namespace Siccity.GLTFUtility {
 			private List<GLTFMesh> meshes;
 			private GLTFMaterial.ImportTask materialTask;
 
-			public ImportTask(List<GLTFMesh> meshes, GLTFAccessor.ImportTask accessorTask, GLTFMaterial.ImportTask materialTask, ImportSettings importSettings) : base(accessorTask, materialTask) {
+			public ImportTask(List<GLTFMesh> meshes, GLTFAccessor.ImportTask accessorTask, GLTFMaterial.ImportTask materialTask, GLTFBufferView.ImportTask bufferViewTask, ImportSettings importSettings) : base(accessorTask, materialTask) {
 				this.meshes = meshes;
 				this.materialTask = materialTask;
 
@@ -278,7 +288,7 @@ namespace Siccity.GLTFUtility {
 
 					meshData = new MeshData[meshes.Count];
 					for (int i = 0; i < meshData.Length; i++) {
-						meshData[i] = new MeshData(meshes[i], accessorTask.Result);
+						meshData[i] = new MeshData(meshes[i], accessorTask.Result, bufferViewTask.Result);
 					}
 				});
 			}
@@ -299,7 +309,21 @@ namespace Siccity.GLTFUtility {
 					}
 
 					Result[i] = new ImportResult();
-					Result[i].mesh = meshData[i].ToMesh();
+					if(meshData[i].dracoBufferView!=null) {
+						Profiler.BeginSample("DecodeMesh");
+						var byteArray = ReadFully(meshData[i].dracoBufferView.stream,meshData[i].dracoBufferView.byteLength,meshData[i].dracoBufferView.byteOffset);
+						var nativeArrayBytes = new NativeArray<byte>(byteArray,Allocator.Persistent);
+						DracoMeshLoader dracoLoader = new DracoMeshLoader();
+						dracoLoader.onMeshesLoaded += delegate(Mesh mesh) {
+							Result[i].mesh = mesh; 
+						};
+						IEnumerator en = dracoLoader.DecodeMesh(nativeArrayBytes);
+						while (en.MoveNext()) { yield return null; };
+						nativeArrayBytes.Dispose();
+						Profiler.EndSample();
+					} else {
+						Result[i].mesh = meshData[i].ToMesh();
+					}
 					Result[i].materials = new Material[meshes[i].primitives.Count];
 					for (int k = 0; k < meshes[i].primitives.Count; k++) {
 						int? matIndex = meshes[i].primitives[k].material;
@@ -351,6 +375,20 @@ namespace Siccity.GLTFUtility {
 				result.primitives.Add(primitive);
 			}
 			return result;
+		}
+		public static byte[] ReadFully(Stream input,int length, int byteOffset)
+		{
+			byte[] buffer = new byte[length];
+			input.Position=byteOffset;
+			using (MemoryStream ms = new MemoryStream())
+			{
+				int read;
+				while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+				{
+					ms.Write(buffer, 0, read);
+				}
+				return ms.ToArray();
+			}
 		}
 #endregion
 	}
